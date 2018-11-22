@@ -17,6 +17,23 @@ const keycloakPubkeys = {
     qa:    fs.readFileSync(__dirname + '/certs/keycloak.qa.cert',    'utf8')
 };
 
+const fakeUser = {
+    input: {
+        user_id: '123',
+        account_id: '456',
+        account_number: '789',
+        username: 'auser',
+        email: 'auser@redhat.com',
+        firstName: 'adam',
+        lastName: 'user',
+        lang: 'eng',
+        realm_access.roles: [
+            'admin:org:all',
+            'redhat:employees'
+        ]
+    }
+};
+
 const buildUser = input => {
 
     const user = {
@@ -78,7 +95,19 @@ const authPlugin = (req, res, target) => {
         console.log(`    --> mangled ${PORTAL_BACKEND_MARKER} to ${target}`);
     }
 
-    const noop = { then: (cb) => { cb(target); } };
+    const noop = {
+        then: (cb) => {
+
+            if (process.env.MOCK_JWT) {
+                const user = buildUser(fakeUser);
+                const unicodeUser = new Buffer(JSON.stringify(user), "utf8");
+                req.headers["x-rh-identity"] = unicodeUser.toString("base64");
+            }
+
+            cb(target); 
+        }
+    };
+
     if (!req || !req.headers || !req.headers.cookie) { return noop; } // no cookies short circut
 
     const cookies = cookie.parse(req.headers.cookie);
